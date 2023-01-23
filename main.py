@@ -211,6 +211,23 @@ def map_screen(screen):
             screen.blit(pygame.transform.scale(pygame.image.load(TEMP_FILENAME), (WIDTH, HEIGHT)), (0, 0))
         else:
             screen.fill("black")
+            print_text(screen, "Ошибка ввода данных:", 10, 10, (255, 0, 0), 80)
+            error_text = ""
+            try:
+                _ = float(input_text1)
+            except ValueError:
+                error_text = "Долгота не является числом"
+            try:
+                _ = float(input_text2)
+            except ValueError:
+                error_text = "Широта не является числом"
+            try:
+                z = int(input_text3)
+                if z < 0 or 17 < z:
+                    raise ValueError
+            except ValueError:
+                error_text = "Неправильно задан масштаб"
+            print_text(screen, error_text, 10, 100, (255, 0, 0), 80)
         pygame.display.flip()
 
 
