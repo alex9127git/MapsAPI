@@ -4,7 +4,7 @@ import pygame
 import requests
 
 tool_color, tool_message = "blue", ''
-cont_t = ["map", "sat", "skl", "trf"]
+cont_t = ["map", "sat", "sat,skl", "sat,skl,trf"]
 
 WIDTH = 1200
 HEIGHT = 900
@@ -19,7 +19,6 @@ def terminate():
 
 
 def get_map(longitude, latitude, zoom, cont_type):
-    # по клавише SPACE переключение на слои карты
     request = f"https://static-maps.yandex.ru/1.x/?ll={longitude},{latitude}&z={zoom}&l={cont_t[cont_type]}&size" \
               f"=600,450"
     response = requests.get(request)
@@ -80,62 +79,40 @@ def print_text(screen, message, x, y, font_color=(255, 255, 255), font_size=40, 
 
 
 def update_inputs(screen, input_data):
-    need_input1, input_text1 = input_data[0]
-    need_input2, input_text2 = input_data[1]
-    need_input3, input_text3 = input_data[2]
+    do_input = list(map(lambda x: x[0], input_data[:3]))
+    input_texts = list(map(lambda x: x[1], input_data[:3]))
     cont_type = input_data[3][1]
     rects = (pygame.Rect(143, 115, 230, 25), pygame.Rect(143, 165, 230, 25), pygame.Rect(143, 215, 230, 25))
-    for rect in rects:
+    for i, rect in enumerate(rects):
+        border_color = (255, 86, 0) if do_input[i] else (0, 0, 0)
         pygame.draw.rect(screen, (255, 255, 255), rect)
-        pygame.draw.rect(screen, (255, 86, 0), rect, 2)
+        pygame.draw.rect(screen, border_color, rect, 2)
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
-
-    if rects[0].collidepoint(mouse[0], mouse[1]) and click[0] and not (need_input2 or need_input3):
-        need_input1 = True
-    if rects[1].collidepoint(mouse[0], mouse[1]) and click[0] and not (need_input3 or need_input1):
-        need_input2 = True
-    if rects[2].collidepoint(mouse[0], mouse[1]) and click[0] and not (need_input2 or need_input1):
-        need_input3 = True
-
-    if need_input1:
-        for event1 in pygame.event.get():
-            if event1.type == pygame.KEYDOWN:
-                if event1.key == pygame.K_RETURN:
-                    need_input1 = False
-                elif event1.key == pygame.K_BACKSPACE:
-                    input_text1 = input_text1[:-1]
-                else:
-                    if len(input_text1) < 21:
-                        input_text1 += event1.unicode
-    if need_input2:
-        for event2 in pygame.event.get():
-            if event2.type == pygame.KEYDOWN:
-                if event2.key == pygame.K_RETURN:
-                    need_input2 = False
-                elif event2.key == pygame.K_BACKSPACE:
-                    input_text2 = input_text2[:-1]
-                else:
-                    if len(input_text2) < 21:
-                        input_text2 += event2.unicode
-    if need_input3:
-        for event3 in pygame.event.get():
-            if event3.type == pygame.KEYDOWN:
-                if event3.key == pygame.K_RETURN:
-                    need_input3 = False
-                elif event3.key == pygame.K_BACKSPACE:
-                    input_text3 = input_text3[:-1]
-                else:
-                    if len(input_text3) < 21:
-                        input_text3 += event3.unicode
-
-    if len(input_text1):
-        print_text(screen, input_text1, rects[0].x + 10, rects[0].y + 4, font_color=(0, 0, 0), font_size=25)
-    if len(input_text2):
-        print_text(screen, input_text2, rects[1].x + 10, rects[1].y + 4, font_color=(0, 0, 0), font_size=25)
-    if len(input_text3):
-        print_text(screen, input_text3, rects[2].x + 10, rects[2].y + 4, font_color=(0, 0, 0), font_size=25)
-    return [[need_input1, input_text1], [need_input2, input_text2], [need_input3, input_text3], ['', cont_type]]
+    if click[0]:
+        for i in range(3):
+            if rects[i].collidepoint(mouse[0], mouse[1]):
+                do_input = [False, False, False]
+                do_input[i] = True
+                break
+        else:
+            do_input = [False, False, False]
+    for i in range(3):
+        if do_input[i]:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        do_input[i] = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        input_texts[i] = input_texts[i][:-1]
+                    else:
+                        if len(input_texts[i]) < 21:
+                            input_texts[i] += event.unicode
+        if len(input_texts[i]):
+            print_text(screen, input_texts[i], rects[i].x + 10, rects[i].y + 4, font_color=(0, 0, 0), font_size=25)
+    return list(map(list, zip(do_input, input_texts))) + [["", cont_type]]
 
 
 def draw(screen):
@@ -193,19 +170,23 @@ def input_menu():
     return input_data
 
 
-def print_map(screen, lat, lon, zm, cont_type):
-    if get_map(lat, lon, zm, cont_type):
+def print_map(screen, lon, lat, zm, cont_type):
+    screen.fill("black")
+    if get_map(lon, lat, zm, cont_type):
         screen.blit(pygame.transform.scale(pygame.image.load(TEMP_FILENAME), (WIDTH, HEIGHT)), (0, 0))
     else:
-        screen.fill("black")
+        if os.path.exists(TEMP_FILENAME):
+            screen.blit(pygame.transform.scale(pygame.image.load(TEMP_FILENAME), (WIDTH, HEIGHT)), (0, 0))
+            print_text(screen, "Не получилось обновить карту", 10, 10, (255, 0, 0), 80)
+            return
         print_text(screen, "Ошибка ввода данных:", 10, 10, (255, 0, 0), 80)
         error_text = ""
         try:
-            _ = float(lat)
+            _ = float(lon)
         except ValueError:
             error_text = "Долгота не является числом"
         try:
-            _ = float(lon)
+            _ = float(lat)
         except ValueError:
             error_text = "Широта не является числом"
         try:
@@ -218,23 +199,37 @@ def print_map(screen, lat, lon, zm, cont_type):
 
 
 def map_screen(screen, inputs):
-    latitude, longitude, zoom, cont_type = inputs
+    longitude, latitude, zoom, cont_type = inputs
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_PAGEUP and zoom:
+                if event.key == pygame.K_PAGEUP:
                     if 0 <= int(zoom) + 1 <= 17:
-                        zoom = str(int(zoom) + 1)
-                if event.key == pygame.K_PAGEDOWN and zoom:
+                        zoom += 1
+                if event.key == pygame.K_PAGEDOWN:
                     if 0 <= int(zoom) - 1 <= 17:
-                        zoom = str(int(zoom) - 1)
+                        zoom -= 1
                 if event.key == pygame.K_SPACE:
-                    cont_type = (cont_type + 1) % 4
+                    cont_type = (cont_type + 1) % len(cont_t)
+        keys = pygame.key.get_pressed()
+        delta = 0.0001 * (2 ** (17 - zoom))
+        if keys[pygame.K_RIGHT]:
+            longitude += delta
+            longitude = -180 if longitude >= 180 else longitude
+        if keys[pygame.K_LEFT]:
+            longitude -= delta
+            longitude = 180 if longitude <= -180 else longitude
+        if keys[pygame.K_UP]:
+            latitude += delta
+            latitude = -85 if latitude >= 85 else latitude
+        if keys[pygame.K_DOWN]:
+            latitude -= delta
+            latitude = 85 if latitude <= -85 else latitude
         clock.tick(60)
-        print_map(screen, latitude, longitude, zoom, cont_type)
+        print_map(screen, longitude, latitude, zoom, cont_type)
         pygame.display.flip()
 
 
@@ -247,9 +242,10 @@ def run():
         масштаб = 13
         показывает фото из документации яндекса (почти)
         """
-        inputs = map(lambda x: x[1], input_menu())
+        inputs = list(map(lambda x: x[1], input_menu()))
         screen = initialize()
-        map_screen(screen, inputs)
+        map_screen(screen, (float(inputs[0]), float(inputs[1]), int(inputs[2]), inputs[3]))
+        # map_screen(screen, (37.62007, 55.75363, 13, 0))
 
 
 if __name__ == '__main__':
