@@ -220,12 +220,13 @@ def map_screen(screen, inputs):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame.K_PAGEUP and zoom:
-                if 0 <= int(zoom) + 1 <= 17:
-                    zoom = str(int(zoom) + 1)
-            if event.type == pygame.K_PAGEDOWN and zoom:
-                if 0 <= int(zoom) - 1 <= 17:
-                    zoom = str(int(zoom) - 1)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_PAGEUP and zoom:
+                    if 0 <= int(zoom) + 1 <= 17:
+                        zoom = str(int(zoom) + 1)
+                if event.key == pygame.K_PAGEDOWN and zoom:
+                    if 0 <= int(zoom) - 1 <= 17:
+                        zoom = str(int(zoom) - 1)
         clock.tick(60)
         print_map(screen, latitude, longitude, zoom)
         pygame.display.flip()
