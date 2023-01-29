@@ -4,6 +4,7 @@ import pygame
 import requests
 
 tool_color, tool_message = "blue", ''
+cont_t = ["map", "sat", "skl", "trf"]
 
 WIDTH = 1200
 HEIGHT = 900
@@ -17,8 +18,10 @@ def terminate():
     sys.exit()
 
 
-def get_map(longitude, latitude, zoom):
-    request = f"https://static-maps.yandex.ru/1.x/?ll={longitude},{latitude}&z={zoom}&l=map&size=600,450"
+def get_map(longitude, latitude, zoom, cont_type):
+    # по клавише SPACE переключение на слои карты
+    request = f"https://static-maps.yandex.ru/1.x/?ll={longitude},{latitude}&z={zoom}&l={cont_t[cont_type]}&size" \
+              f"=600,450"
     response = requests.get(request)
     if response:
         map_file = TEMP_FILENAME
@@ -60,7 +63,7 @@ class Button:
 
     def on_click(self, input_data):
         global tool_color, tool_message
-        input_text1, input_text2, input_text3 = map(lambda x: x[1], input_data)
+        input_text1, input_text2, input_text3, cont_type = map(lambda x: x[1], input_data)
         if not (input_text1 and input_text2 and input_text3):
             tool_color, tool_message = "red", "Некорректные данные!"
             return
@@ -80,6 +83,7 @@ def update_inputs(screen, input_data):
     need_input1, input_text1 = input_data[0]
     need_input2, input_text2 = input_data[1]
     need_input3, input_text3 = input_data[2]
+    cont_type = input_data[3][1]
     rects = (pygame.Rect(143, 115, 230, 25), pygame.Rect(143, 165, 230, 25), pygame.Rect(143, 215, 230, 25))
     for rect in rects:
         pygame.draw.rect(screen, (255, 255, 255), rect)
@@ -131,7 +135,7 @@ def update_inputs(screen, input_data):
         print_text(screen, input_text2, rects[1].x + 10, rects[1].y + 4, font_color=(0, 0, 0), font_size=25)
     if len(input_text3):
         print_text(screen, input_text3, rects[2].x + 10, rects[2].y + 4, font_color=(0, 0, 0), font_size=25)
-    return [[need_input1, input_text1], [need_input2, input_text2], [need_input3, input_text3]]
+    return [[need_input1, input_text1], [need_input2, input_text2], [need_input3, input_text3], ['', cont_type]]
 
 
 def draw(screen):
@@ -164,7 +168,7 @@ def input_menu():
     button = Button(130, 45, True, 32)
     button2 = Button(40, 40, in_c=(247, 104, 164), ac_c=(252, 174, 207))
     running = True
-    input_data = [[False, ''], [False, ''], [False, '']]
+    input_data = [[False, ''], [False, ''], [False, ''], ['', 0]]
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -189,8 +193,8 @@ def input_menu():
     return input_data
 
 
-def print_map(screen, lat, lon, zm):
-    if get_map(lat, lon, zm):
+def print_map(screen, lat, lon, zm, cont_type):
+    if get_map(lat, lon, zm, cont_type):
         screen.blit(pygame.transform.scale(pygame.image.load(TEMP_FILENAME), (WIDTH, HEIGHT)), (0, 0))
     else:
         screen.fill("black")
@@ -214,7 +218,7 @@ def print_map(screen, lat, lon, zm):
 
 
 def map_screen(screen, inputs):
-    latitude, longitude, zoom = inputs
+    latitude, longitude, zoom, cont_type = inputs
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -227,8 +231,10 @@ def map_screen(screen, inputs):
                 if event.key == pygame.K_PAGEDOWN and zoom:
                     if 0 <= int(zoom) - 1 <= 17:
                         zoom = str(int(zoom) - 1)
+                if event.key == pygame.K_SPACE:
+                    cont_type = (cont_type + 1) % 4
         clock.tick(60)
-        print_map(screen, latitude, longitude, zoom)
+        print_map(screen, latitude, longitude, zoom, cont_type)
         pygame.display.flip()
 
 
